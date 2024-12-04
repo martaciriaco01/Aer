@@ -148,9 +148,14 @@ velv = velu;
 for i = 1 : NPannelli
     velu(i) = U_inf_x; 
     velv(i) = U_inf_y;
+    Centropan = Centro(i,:)';
     for j = 1 : NPannelli
-        [U_s] = ViSorgente(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix(j, :, :), G2L_TransfMatrix(j, :, :));
-        [U_v] = ViVortice(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix(j, :, :), G2L_TransfMatrix(j, :, :));
+        Estremo1pan = Estremo_1(j,:)';
+        Estremo2pan = Estremo_2(j,:)';
+        L2G_TransfMatrix_pan = squeeze(L2G_TransfMatrix(j, :, :));
+        G2L_TransfMatrix_pan = squeeze(G2L_TransfMatrix(j, :, :));
+        [U_s] = ViSorgente(Centropan, Estremo1pan, Estremo2pan, L2G_TransfMatrix_pan, G2L_TransfMatrix_pan);
+        [U_v] = ViVortice(Centropan, Estremo1pan, Estremo2pan, L2G_TransfMatrix_pan, G2L_TransfMatrix_pan);
        velu(i) = velu(i) + Soluzione(j)*U_s(1) + Soluzione(NPannelli+1)*U_v(1);
        velv(i) = velv(i) + Soluzione(j)*U_s(2) + Soluzione(NPannelli+1)*U_v(2);
     end
@@ -177,6 +182,6 @@ Cl = -Cp'*( lunghezza' .* Normale(:,2) )
 circ= sum(lunghezza' .* Soluzione(NPannelli+1))
 rho = 1;
 Lift = rho * U_inf * circ
-Cl1 = Lift/(0.5*rho*U^2)
+Cl1 = Lift/(0.5*rho*U_inf^2)
 
 
