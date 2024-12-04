@@ -149,8 +149,8 @@ for i = 1 : NPannelli
     velu(i) = U_inf_x; 
     velv(i) = U_inf_y;
     for j = 1 : NPannelli
-        [U_s] = ViSorgente(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix, G2L_TransfMatrix) 
-        [U_v] = ViVortice(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix, G2L_TransfMatrix) 
+        [U_s] = ViSorgente(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix(j, :, :), G2L_TransfMatrix(j, :, :));
+        [U_v] = ViVortice(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix(j, :, :), G2L_TransfMatrix(j, :, :));
        velu(i) = velu(i) + Soluzione(j)*U_s(1) + Soluzione(NPannelli+1)*U_v(1);
        velv(i) = velv(i) + Soluzione(j)*U_s(2) + Soluzione(NPannelli+1)*U_v(2);
     end
@@ -158,11 +158,13 @@ end
 
 if (max(velu.*Normale(:,1) + velv.*Normale(:,2))>10^(-14))
     disp('There is a bug in the program!')
-    stop
+    return
 end
 
 Vt = velu.*Tangente(:,1) + velv.*Tangente(:,2);
 Vn = velu.*Normale(:,1) + velv.*Normale(:,2);
+
+U_inf = 1; % velocità indisturbata
 
 Cp = 1-Vt.^2/U_inf^2;
 
