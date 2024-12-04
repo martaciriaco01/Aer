@@ -25,7 +25,7 @@ end
 
 
 % Trasformo da coordinate globali a coordinate locali
-Centro = G2L_TransfMatrix * Centro;   % dava errore, ho aggiunto il . a tutti
+Centro = G2L_TransfMatrix * Centro;   
 
 Estremo_1 = G2L_TransfMatrix * Estremo_1;
 
