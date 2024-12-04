@@ -60,14 +60,14 @@ if (abs(theta_2)<10^(-12) && abs(theta_1)>3); theta_2=0; theta_1=-pi; end
 
 
 % Calcolo le componenti della velocità
-u = -(0.5/pi) * log(norm(r2,'fro')/norm(r1,'fro'));
+u = -(0.5/pi) * log(norm(r2,'fro')/norm(r1,'fro'));  % ho aggiunto 'fro'
 v = theta_2 - theta_1;
 v = v / (2*pi);
 
 
 %% Converto da coordinate locali a coordinate globali
 
-U = L2G_TransfMatrix * [u;v];
+U = L2G_TransfMatrix .* [u;v];
 
 
 if abs(U(1)) < 10^(-12)

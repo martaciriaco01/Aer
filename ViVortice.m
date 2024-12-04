@@ -23,11 +23,11 @@ function [U_v] = ViVortice(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix, G2L_T
 
 
 % Trasformo da coordinate globali a coordinate locali
-Centro = G2L_TransfMatrix * Centro;
+Centro = G2L_TransfMatrix .* Centro;
 
-Estremo_1 = G2L_TransfMatrix * Estremo_1;
+Estremo_1 = G2L_TransfMatrix .* Estremo_1;
 
-Estremo_2 = G2L_TransfMatrix * Estremo_2;
+Estremo_2 = G2L_TransfMatrix .* Estremo_2;
 
 
 %% Calcolo u e v in coordinate locali
@@ -53,13 +53,13 @@ if (abs(theta_2)<10^(-8) && abs(theta_1)>3); theta_2=0; theta_1=-pi; end
 % Calcolo le componenti della velocità
 u = theta_2 - theta_1;
 u = u / (2*pi);
-v = (0.5/pi) * log(norm(r2)/norm(r1));
+v = (0.5/pi) * log(norm(r2,'fro')/norm(r1,'fro'));
 
 
 
 %% Converto da coordinate locali a coordinate globali
 
-U = L2G_TransfMatrix * [u;v];
+U = L2G_TransfMatrix .* [u;v];
 
 
 
