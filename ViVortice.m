@@ -23,7 +23,7 @@ function [U_v] = ViVortice(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix, G2L_T
 
 
 % Trasformo da coordinate globali a coordinate locali
-Centro = G2L_TransfMatrix * Centro;   % dava errore, ho aggiunto il . a tutti
+Centro = G2L_TransfMatrix * Centro;   
 
 Estremo_1 = G2L_TransfMatrix * Estremo_1;
 
