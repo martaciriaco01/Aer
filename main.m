@@ -177,11 +177,31 @@ Cp = 1-Vt.^2/U_inf^2;
 
 %% COEFFICIENTE DI PORTANZA --> Cl = sum (Cp_i * L_i* cos(theta_i) )
 
+% coefficiente di portanza mediante il coefficiente di pressione
 Cl = -Cp'*( lunghezza' .* Normale(:,2) )
 
-circ= sum(lunghezza' .* Soluzione(NPannelli+1))
+% coefficiente di portanza mediante circolazione
+circ= sum(lunghezza' .* Soluzione(NPannelli+1)); % circolazione totale
 rho = 1;
-Lift = rho * U_inf * circ
+Lift = rho * U_inf * circ;  % teorema di Jutta-Joukowsky per calcolo portanza
 Cl1 = Lift/(0.5*rho*U_inf^2)
+
+
+
+%% COEFFICIENTE DI MOMENTO 
+
+% Coordinate Centro Aerodinamico
+xp = Chord / 4;
+yp = 0;
+
+% Coordinate dei centri dei pannelli
+x_centro = Centro(:, 1); 
+y_centro = Centro(:, 2); 
+
+% Momento per ogni pannello
+Cm_contributi = -Cp .* lunghezza' .* (   y_centro .* cos(deg2rad(alpha)) - (x_centro - xp) .* sin(deg2rad(alpha))    );
+
+% Somma dei contributi 
+Cm = sum(Cm_contributi)
 
 
