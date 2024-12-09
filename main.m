@@ -178,30 +178,45 @@ Cp = 1-Vt.^2/U_inf^2;
 %% COEFFICIENTE DI PORTANZA --> Cl = sum (Cp_i * L_i* cos(theta_i) )
 
 % coefficiente di portanza mediante il coefficiente di pressione
-Cl = -Cp'*( lunghezza' .* Normale(:,2) )
+Cl = -Cp' * ( lunghezza' .* Normale(:,2) );
 
 % coefficiente di portanza mediante circolazione
 circ= sum(lunghezza' .* Soluzione(NPannelli+1)); % circolazione totale
 rho = 1;
 Lift = rho * U_inf * circ;  % teorema di Jutta-Joukowsky per calcolo portanza
-Cl1 = Lift/(0.5*rho*U_inf^2)
+Cl1 = Lift/(0.5*rho*U_inf^2);
 
 
 
-%% COEFFICIENTE DI MOMENTO 
-
-% Coordinate Centro Aerodinamico
-xp = Chord / 4;
-yp = 0;
+%% Cm rispetto al LE
 
 % Coordinate dei centri dei pannelli
 x_centro = Centro(:, 1); 
-y_centro = Centro(:, 2); 
+z_centro = Centro(:, 2); 
 
-% Momento per ogni pannello
-Cm_contributi = -Cp .* lunghezza' .* (   y_centro .* cos(deg2rad(alpha)) - (x_centro - xp) .* sin(deg2rad(alpha))    );
+r_cross_n = x_centro .* Normale(:,2) - z_centro .* Normale(:,1); 
+Cm_LE = Cp' * (lunghezza' .* r_cross_n);
 
-% Somma dei contributi 
-Cm = sum(Cm_contributi)
+
+%% Cm rispetto al CENTRO AERODINAMICO
+
+% Coordinate dei centri dei pannelli
+x_centro = Centro(:, 1); 
+z_centro = Centro(:, 2); 
+
+% Centro aerodinamico a x = 1/4 
+x_c4 = x_centro - 1/4; 
+ 
+r_c4_cross_n = x_c4 .* Normale(:,2) - z_centro .* Normale(:,1);
+Cm_c4 = (Cp' * (lunghezza' .* r_c4_cross_n));
+
+
+
+%% creo un vettore con Cl,Cl1,Cm_c4 per vedere subito i risultati
+
+risultati = [Cl, Cl1, Cm_c4]
+
+
+
 
 
