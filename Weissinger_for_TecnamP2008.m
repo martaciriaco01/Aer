@@ -229,7 +229,7 @@ E = CL_3D/CDi;
 fprintf('Efficienza aerodinamica: E = %.4f\n', E);
 
 % Define angle range in degrees
-alpha_range = -10:1:15;
+alpha_range = -6:1:8;
 CL_values = zeros(size(alpha_range));
 
 % Calculate CL for each angle
@@ -320,10 +320,6 @@ end
 % Calcolo coefficiente di resistenza indotta
 CDi_angle = Di_angle / (q_inf * config.Surface);
 
-fprintf('\nCalcolo con angolo indotto:\n');
-fprintf('Resistenza indotta da angolo: Di = %.4f N\n', Di_angle);
-fprintf('Coefficiente di resistenza indotta da angolo: CDi = %.4f\n', CDi_angle);
-
 
 %% Plot CL vs CD
 figure;
@@ -382,22 +378,22 @@ grid on;
 
 
 %% Compute and plot the lift distribution over the entire span
-LiftDistribution = zeros(1, 2 * config.SemiSpanwiseDiscr);
+GammaDistribution = zeros(1, 2 * config.SemiSpanwiseDiscr);
 
 for iCorpo = 1:config.NCorpi
     for SpanPanel_i = 1:2*config.SemiSpanwiseDiscr(iCorpo)
-        LiftDistribution(SpanPanel_i) = sum(Gamma{iCorpo}(:, SpanPanel_i));
+        GammaDistribution(SpanPanel_i) = sum(Gamma{iCorpo}(:, SpanPanel_i)) / (rho * U_Inf_Mag * dSpan);
     end
 end
 
 % Plot the circulation distribution over the span
 figure;
 y = linspace(-config.SemiSpan, config.SemiSpan, 2 * config.SemiSpanwiseDiscr);
-plot(y, LiftDistribution, 'm-', 'LineWidth', 1.5);
+plot(y, GammaDistribution, 'm-', 'LineWidth', 1.5);
 hold on;
 
 % Compute and plot the elliptic circulation distribution
-Gamma_elliptic = max(LiftDistribution) * sqrt(1 - (y / config.SemiSpan).^2);
+Gamma_elliptic = max(GammaDistribution) * sqrt(1 - (y / config.SemiSpan).^2);
 plot(y, Gamma_elliptic, 'r--', 'LineWidth', 1.5);
 
 title('Circulation Distribution over the Span');
@@ -414,8 +410,8 @@ CL_values_Tecnam = CL_values;
 CD_values_Tecnam = CD_values;
 y_Tecnam = y;
 Gamma_elliptic_Tecnam = Gamma_elliptic;
-LiftDistribution_Tecnam = LiftDistribution;
+GammaDistribution_Tecnam = GammaDistribution;
 
-save('file_tecnam.mat', 'CL_values_Tecnam', 'CD_values_Tecnam', 'y_Tecnam', 'Gamma_elliptic_Tecnam', 'LiftDistribution_Tecnam');
+save('file_tecnam.mat', 'CL_values_Tecnam', 'CD_values_Tecnam', 'y_Tecnam', 'Gamma_elliptic_Tecnam', 'GammaDistribution_Tecnam');
 
 
