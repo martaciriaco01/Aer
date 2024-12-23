@@ -4,7 +4,7 @@
 **Componenti**:
 > Giacomo Ballielo (giacomo.ballielo@mail.polimi.it - 280843)
 >
-> Marta Ciriaco (marta.ciriaco@mail.polimi.it - MAT)
+> Marta Ciriaco (marta.ciriaco@mail.polimi.it - 259574)
 
 ## Sezione 1
 
