@@ -9,8 +9,8 @@ addpath mat_functions\
 % Source: http://airfoiltools.com/airfoil/seligdatfile?airfoil=giiim-il
 profile = importXfoilProfile('BL430.dat');
 
-x = flipud(profile.x) - .5;
-y = flipud(profile.y);
+x = profile.x - .5;
+y = profile.y;
 np = length(x); % Numero Punti Assegnati sul Profilo
 fprintf(">> Numero Punti del Profilo Assegnati: %d\n", np)
 
@@ -40,11 +40,11 @@ nm = floor(np / 2) + 1; % Numero Punti su Ciascun Side
 fprintf(">> Numero Punti su Ciascun Side (Includendo LE): %d\n", nm)
 
 % Definizione Linea del Dorso
-suction = profile((nm + mod(np, 2) - 1) : np, :);
+suction = flipud(profile(1 : nm, :));
 suction(1, :) = [-.5, 0]; % Aggiunta Bordo d'Attacco
 
 % Definizione Linea del Ventre
-pressure = flip(profile(1 : nm, :));
+pressure = profile((nm + mod(np, 2) - 1) : np, :);
 pressure(1, :) = [-.5, 0]; % Aggiunta Bordo d'Attacco
 
 %% Individuazione Linea Media
@@ -75,30 +75,29 @@ hold off
 % ne Delineano il Contorno, Effettua un'Interpolazione Tramite
 % Spline del Contorno Stesso e Calcola la Superficie Così Definita
 % Source: https://it.mathworks.com/matlabcentral/fileexchange/69055-interpclosed/
-up = [flip(suction); meanline];
-down = [flip(meanline); pressure];
+up = [flipud(suction); meanline];
+down = [flipud(meanline); pressure];
 
 [len_up, area_up] = interpclosed(up(:, 1), up(:, 2));
-fprintf(">> Area Porzione Superiore: %d\n", area_up)
+fprintf(">> Area Porzione Superiore: %.4f\n", area_up)
 [len_down, area_down] = interpclosed(down(:, 1), down(:, 2));
-fprintf(">> Area Porzione Inferiore: %d\n", area_down)
+fprintf(">> Area Porzione Inferiore: %.4f\n", area_down)
 
-%% Interpolazione Linea Media, Calcolo Angolo e Analisi Consistenza
-% Verificato che la Linea Media è Valida, Occorre Interpolare i
-% Punti che la Compongono per poi Definire la Funzione Integranda
-% per il Calcolo dell'Angolo di Theodorsen.
+%% Approssimazione Linea Media, Calcolo Angolo e Analisi Consistenza
+% Verificato che la Linea Media sia Valida, Occorre Ottenere una
+% Soddisfacente Approssimazione della Linea Media nell'Intervallo [0, 1].
 % Si Definisce un Vettore xx Contenente un Numero n Sufficientemente
-% Elevato di Nodi Dove Valutare l'Interpolazione.
-% Per l'Interpolazione si Adottano 3 Diversi Metodi:
-% - Spline Cubica (Not a Knot)
-% - Pchip (Cubic Hermite Polynomials)
-% - Interpolante Polinomiale ai Minimi Quadrati Pesati (Ordine m)
+% Elevato di Nodi Dove Valutare l'Approssimazione.
+% Per l'Approssimazione si Adottano 3 Diversi Metodi:
+% - Interpolante Spline Cubica (Not a Knot)
+% - Interpolante Pchip (Cubic Hermite Polynomials)
+% - Fit Polinomiale ai Minimi Quadrati Pesati (Ordine m) (fitMeanline.m)
 % Si Procederà con una Valutazione dell'Impatto della Scelta del
-% Metodo Interpolatorio sul Risultato Finale
+% Metodo di Approssimazione sul Risultato Finale
 %
 % Per la Derivazione Numerica della Linea Media, si Utilizza il Metodo
 % alle Differenze Finite Centrate per i Nodi Interni e un Metodo di
-% Ordine 2 agli Estremi
+% Ordine 2 agli Estremi (Funzione ddxMeanline.m)
 %
 % Per Ciascun Metodo, si Calcola Numericamente l'Integrale per
 % Determinare l'Angolo di Progetto Attraverso il Metodo di
@@ -121,7 +120,7 @@ for i = 1 : length(epsilon)
     fprintf("---------------- %c: 10^%d ----------------\n", char(0x03B5), log10(epsilon(i)))
     
     for j = 1 : length(n)
-        fprintf("Nodi Interpolazione: 10^%d\n", log10(n(j)))
+        fprintf("Nodi Approssimazione LM: 10^%d\n", log10(n(j)))
         
         xx = linspace(-.5 + epsilon(i), .5 - epsilon(i), n(j))';
         
@@ -130,14 +129,14 @@ for i = 1 : length(epsilon)
         ddx = ddxMeanline(S, xx);
         f = ddx ./ sqrt(.25 - xx.^2);
         alpha_th_spline(j, i) = 180 / pi^2 * trapz(xx, f);
-        fprintf(">> Spline: %c = %.4f (deg)\n", char(0x03B1), alpha_th_spline(j, i))
+        fprintf(">> Spline: %c = %.4f%c\n", char(0x03B1), alpha_th_spline(j, i), char(0x00B0))
 
         % Pchip
         S = pchip(meanline(:, 1), meanline(:, 2), xx);
         ddx = ddxMeanline(S, xx);
         f = ddx ./ sqrt(.25 - xx.^2);
         alpha_th_pchip(j, i) = 180 / pi^2 * trapz(xx, f);
-        fprintf(">> Pchip: %c = %.4f (deg)\n", char(0x03B1), alpha_th_pchip(j, i))
+        fprintf(">> Pchip: %c = %.4f%c\n", char(0x03B1), alpha_th_pchip(j, i), char(0x00B0))
 
         % Minimi Quadrati Pesati
         for k = 1 : length(m)
@@ -145,7 +144,7 @@ for i = 1 : length(epsilon)
             ddx = ddxMeanline(S, xx);
             f = ddx ./ sqrt(.25 - xx.^2);
             alpha_th_fit(k, j, i) = 180 / pi^2 * trapz(xx, f);
-            fprintf(">> Fit (Ord. %d): %c = %.4f (deg)\n", m(k), char(0x03B1), alpha_th_fit(k, j, i))
+            fprintf(">> Fit (Ord. %d): %c = %.4f%c\n", m(k), char(0x03B1), alpha_th_fit(k, j, i), char(0x00B0))
         end
     end
 
@@ -163,7 +162,6 @@ for i = 1 : length(epsilon)
     figure(4) % Metodo Minimi Quadrati
     semilogx(n, alpha_th_fit(k, :, i), '-o', 'LineWidth', 1.2)
     hold on
-
     leg{end + 1} = sprintf('%c = 10^{%d}', char(0x03B5), log10(epsilon(i))); % Legenda Plots
 end
 
@@ -204,3 +202,31 @@ ylabel(sprintf('%c (Angolo di Theodorsen)', char(0x03B1)), 'FontSize', 12)
 grid on
 hold off
 
+%% Confronto Diagrammi Cp XFoil
+% A Valle dell'Analisi dei Risultati, si Conclude che un Intervallo
+% Ragionevole dove Collocare l'Angolo di Theodorsen per il Profilo
+% Assegnato GIII BL430 è da 1.5 a 1.9 Gradi (Abbastanza Ampio per via
+% della Povera e Sconveniente Assegnazione di Punti al Bordo d'Attacco).
+% Come Ulteriore Verifica, si Valuta la Forma del Diagramma del Cp
+% Calcolato con XFoil (Modalità Inviscida, 200 Nodi sul Profilo)
+% in Prossimità del Bordo d'Attacco per una Serie di Angoli di Suddetto
+% Intervallo.
+figure(6)
+title('Cp BL430 (XFoil)', 'FontSize', 16)
+leg = {};
+for j = 5 : 2 : 9
+    cp = importXfoilProfile(strcat('th1', num2str(j), '.dat'));
+    plot(cp.x, -cp.y, 'LineWidth', 2)
+    hold on
+    leg{end + 1} = sprintf('%c = 1.%d%c', char(0x03B1), j, char(0x00B0));
+end
+cp = importXfoilProfile('th30.dat');
+plot(cp.x, -cp.y, 'LineWidth', 2)
+leg{end + 1} = sprintf('%c = 3.0%c', char(0x03B1), char(0x00B0));
+title('Confronto Cp XFoil - Theodorsen', 'FontSize', 16)
+legend(leg, 'FontSize', 12)
+xlabel('x/c', 'FontSize', 12)
+ylabel('-Cp', 'FontSize', 12)
+set(gca, 'XLim', [0, 1])
+grid on
+hold off
