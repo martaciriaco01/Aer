@@ -8,9 +8,9 @@ alpha = 5;
 U_Inf = [cosd(alpha)*cosd(beta) sind(beta) sind(alpha)*cosd(beta)] .* U_Inf_Mag;
 rho = 1.225;
 config.NCorpi = 1;
-config.RootChord = 1.625; %[m]
+config.RootChord = 1.625; 
 config.DihedralAngle = 1.73; 
-config.SweepAngle = 0; % [°]
+config.SweepAngle = 0; 
 config.TaperRatio = 0.75;   
 config.AspectRatio = 7.32;   
 config.Span = 11;
@@ -20,6 +20,7 @@ config.LEPosition_Z = 0;
 config.RotationAngle_X = 0;
 config.RotationAngle_Y = 0;
 config.RotationAngle_Z = 0;
+
 % Discretization options
 config.SemiSpanwiseDiscr = 20;
 config.ChordwiseDiscr = 20;
@@ -181,7 +182,7 @@ for iCorpo = 1:config.NCorpi
 end
 title('Distribuzione della Portanza (2D)');
 xlabel('Spanwise Position [m]');
-ylabel('Lift per unit span [N/m]');
+ylabel('L per unit span [N/m]');
 grid on;
 
 %% Calcolo dei coefficienti aerodinamici
@@ -246,7 +247,14 @@ for i = 1:length(alpha_range)
     end
     
     % Calculate CL
-    CL_values(i) = Lift / (0.5 * rho * U_Inf_Mag^2 * config.Surface);
+    % Apply sweep angle correction
+    sweep_correction_factor = cos(deg2rad(config.SweepAngle));
+    CL_values(i) = (Lift / (0.5 * rho * U_Inf_Mag^2 * config.Surface)) * sweep_correction_factor;
+
+    % Calculate induced drag coefficient for this angle
+    CDi = CL_values(i)^2 / (pi * config.AspectRatio * e);
+    CD_values(i) = CDi;
+
 end
 
 % Calculate cl_alpha using linear regression
@@ -256,9 +264,9 @@ cl_alpha = (CL_values(end) - CL_values(1)) / (alpha_rad(end) - alpha_rad(1));
 % Plot CL vs alpha to verify linearity
 figure;
 plot(alpha_range, CL_values, 'b-o');
-xlabel('Angle of Attack (degrees)');
+xlabel('Alpha (gradi)');
 ylabel('C_L');
-title('Lift Coefficient vs Angle of Attack');
+title('CL/ALPHA');
 grid on;
 
 % Calcolo dei coefficienti di portanza
@@ -307,96 +315,98 @@ fprintf('\nCalcolo con angolo indotto:\n');
 fprintf('Resistenza indotta da angolo: Di = %.4f N\n', Di_angle);
 fprintf('Coefficiente di resistenza indotta da angolo: CDi = %.4f\n', CDi_angle);
 
-%% Compute induced angle of attack for each panel
-alpha_induced = cell(config.NCorpi, 1);
-for iCorpo = 1:config.NCorpi
-    alpha_induced{iCorpo} = zeros(config.ChordwiseDiscr(iCorpo), 2 * config.SemiSpanwiseDiscr(iCorpo));
-    for ChordPanel_i = 1:config.ChordwiseDiscr(iCorpo)
-        for SpanPanel_i = 1:2*config.SemiSpanwiseDiscr(iCorpo)
-            % Compute the downwash velocity induced by all vortices
-            w_induced = 0;
-            ControlPointHere = ControlPoints{iCorpo}{ChordPanel_i, SpanPanel_i}.Coords;
-            for jCorpo = 1:config.NCorpi
-                for ChordPanel_j = 1:config.ChordwiseDiscr(jCorpo)
-                    for SpanPanel_j = 1:2*config.SemiSpanwiseDiscr(jCorpo)
-                        Extreme_1 = InfiniteVortices{jCorpo}{ChordPanel_j, SpanPanel_j}.Root.toInfty;
-                        Extreme_2 = InfiniteVortices{jCorpo}{ChordPanel_j, SpanPanel_j}.Root.onWing;
-                        U = vortexInfluence(ControlPointHere, Extreme_1, Extreme_2);
-                        Extreme_1 = Vortices{jCorpo}{ChordPanel_j, SpanPanel_j}.Root;
-                        Extreme_2 = Vortices{jCorpo}{ChordPanel_j, SpanPanel_j}.Tip;
-                        U = U + vortexInfluence(ControlPointHere, Extreme_1, Extreme_2);
-                        Extreme_1 = InfiniteVortices{jCorpo}{ChordPanel_j, SpanPanel_j}.Tip.onWing;
-                        Extreme_2 = InfiniteVortices{jCorpo}{ChordPanel_j, SpanPanel_j}.Tip.toInfty;
-                        U = U + vortexInfluence(ControlPointHere, Extreme_1, Extreme_2);
-                        w_induced = w_induced + U(3); % Downwash component
-                    end
+
+
+%% Plot CL vs CD
+figure;
+hold on;
+
+    for i = 1:length(alpha_range)
+        alpha = deg2rad(alpha_range(i));
+        U_Inf = [cos(alpha) 0 sin(alpha)] * U_Inf_Mag;
+
+        rowIndex = 0;
+        for iCorpo = 1:config.NCorpi
+            for ChordPanel_i = 1:config.ChordwiseDiscr(iCorpo)
+                for SpanPanel_i = 1:2*config.SemiSpanwiseDiscr(iCorpo)
+                    rowIndex = rowIndex + 1;
+                    NormalHere = Normals{iCorpo}{ChordPanel_i, SpanPanel_i}.Coords;
+                    TermineNoto(rowIndex) = -dot(U_Inf, NormalHere);
                 end
             end
-            % Compute induced angle of attack
-            alpha_induced{iCorpo}(ChordPanel_i, SpanPanel_i) = atan2d(w_induced, U_Inf_Mag);
         end
-    end
-end
 
-%% Compute induced drag using induced angle of attack
-Di_panels = 0;
-for iCorpo = 1:config.NCorpi
-    dSpan = config.SemiSpan(iCorpo) / config.SemiSpanwiseDiscr(iCorpo);
-    for ChordPanel_i = 1:config.ChordwiseDiscr(iCorpo)
-        for SpanPanel_i = 1:2*config.SemiSpanwiseDiscr(iCorpo)
-            % Local lift
-            GammaLocal = Gamma{iCorpo}(ChordPanel_i, SpanPanel_i);
-            L_local = rho * U_Inf_Mag * GammaLocal * dSpan;
-            
-            % Induced angle of attack
-            alpha_ind = alpha_induced{iCorpo}(ChordPanel_i, SpanPanel_i);
-            
-            % Local induced drag
-            D_2D_i = L_local * sind(alpha_ind);
-            
-            % Sum up the induced drag
-            Di_panels = Di_panels + dSpan * D_2D_i;
+        Solution = linsolve(matriceA, TermineNoto);
+
+        Lift = 0;
+        for iCorpo = 1:config.NCorpi
+            dSpan = config.SemiSpan(iCorpo) / config.SemiSpanwiseDiscr(iCorpo);
+            GammaHere = reshape(Solution, config.ChordwiseDiscr(iCorpo), []);
+            Lift = Lift + sum(sum(GammaHere)) * rho * U_Inf_Mag * dSpan;
         end
+
+        sweep_correction_factor = cos(deg2rad(config.SweepAngle));
+        CL_values(i) = (Lift / (0.5 * rho * U_Inf_Mag^2 * config.Surface)) * sweep_correction_factor;
+
+        CDi = CL_values(i)^2 / (pi * config.AspectRatio * e);
+        CD_values(i) = CDi;
     end
-end
 
-fprintf('Resistenza indotta calcolata dai pannelli: Di = %.4f N\n', Di_panels);
-% Initialize Drag2D and Lift2D
-Drag2D = cell(config.NCorpi, 1);
-Lift2D = cell(config.NCorpi, 1);
+    plot(CD_values, CL_values, 'b-o');
 
-for iCorpo = 1:config.NCorpi
-    Drag2D{iCorpo} = zeros(1, 2 * config.SemiSpanwiseDiscr(iCorpo));
-    Lift2D{iCorpo} = zeros(1, 2 * config.SemiSpanwiseDiscr(iCorpo)); % Initialize Lift2D
-    for SpanPanel_i = 1:2 * config.SemiSpanwiseDiscr(iCorpo)
-        for ChordPanel_i = 1:config.ChordwiseDiscr(iCorpo)
-            GammaLocal = Gamma{iCorpo}(ChordPanel_i, SpanPanel_i);
-            L_local = rho * U_Inf_Mag * GammaLocal * (config.SemiSpan / config.SemiSpanwiseDiscr);
-            alpha_ind = alpha_induced{iCorpo}(ChordPanel_i, SpanPanel_i);
-            D_local = L_local * sind(alpha_ind);
-            Drag2D{iCorpo}(SpanPanel_i) = Drag2D{iCorpo}(SpanPanel_i) + D_local;
-            Lift2D{iCorpo}(SpanPanel_i) = Lift2D{iCorpo}(SpanPanel_i) + L_local; % Populate Lift2D
-        end
-    end
-end
+xlabel('C_D');
+ylabel('C_L');
+title('Polare');
 
-% Compute 2D drag coefficient
-CD2D = cell(config.NCorpi, 1);
-for iCorpo = 1:config.NCorpi
-    CD2D{iCorpo} = Drag2D{iCorpo} / (q_inf * config.MAC(iCorpo));
-end
-
-% Convert cell arrays to numeric arrays for plotting
-CD2D_numeric = cell2mat(CD2D');
-Lift2D_numeric = cell2mat(Lift2D');
-
-% Plot CL vs CD 2D
-figure;
-for iCorpo = 1:config.NCorpi
-    plot(CD2D_numeric(iCorpo, :), Lift2D_numeric(iCorpo, :) / (q_inf * config.MAC(iCorpo)), 'LineWidth', 1.5);
-    hold on;
-end
-title('CL vs CD 2D');
-xlabel('CD 2D');
-ylabel('CL 2D');
 grid on;
+hold off;
+
+
+
+%% Curva attrito indotto
+figure;
+plot(alpha_range, CD_values, 'b-o');
+xlabel('Angolo di Attacco (gradi)');
+ylabel('C_{Di}');
+title('Coefficiente di Resistenza Indotta vs Angolo di Attacco');
+grid on;
+
+
+
+%% Compute and plot the lift distribution over the entire span
+LiftDistribution = zeros(1, 2 * config.SemiSpanwiseDiscr);
+
+for iCorpo = 1:config.NCorpi
+    for SpanPanel_i = 1:2*config.SemiSpanwiseDiscr(iCorpo)
+        LiftDistribution(SpanPanel_i) = sum(Gamma{iCorpo}(:, SpanPanel_i));
+    end
+end
+
+% Plot the circulation distribution over the span
+figure;
+y = linspace(-config.SemiSpan, config.SemiSpan, 2 * config.SemiSpanwiseDiscr);
+plot(y, LiftDistribution, 'b-', 'LineWidth', 1.5);
+hold on;
+
+% Compute and plot the elliptic circulation distribution
+Gamma_elliptic = max(LiftDistribution) * sqrt(1 - (y / config.SemiSpan).^2);
+plot(y, Gamma_elliptic, 'r--', 'LineWidth', 1.5);
+
+title('Circulation Distribution over the Span');
+xlabel('Spanwise Position [m]');
+ylabel('Circulation (\Gamma) [m^2/s]');
+legend('Computed Circulation', 'Elliptic Circulation');
+grid on;
+hold off;
+
+
+%% rinomino variabili per dopo
+CL_values_Cessna = CL_values;
+CD_values_Cessna = CD_values;
+y_Cessna = y;
+Gamma_elliptic_Cessna = Gamma_elliptic;
+LiftDistribution_Cessna = LiftDistribution;
+
+save('file_cessna.mat', 'CL_values_Cessna', 'CD_values_Cessna', 'y_Cessna', 'Gamma_elliptic_Cessna', 'LiftDistribution_Cessna');
+
+
